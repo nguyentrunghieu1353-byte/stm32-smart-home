@@ -1,0 +1,23 @@
+//hien thi lên LCD
+// Tự động mở cửa khi trời khô (adc > 3000)
+if (adcValue > 3000 && state == 1) { // Trời khô & cửa đang đóng
+lcd_goto_XY(2, 0);
+lcd_send_string(" ");
+lcd_goto_XY(2, 0);
+lcd_send_string("Dry weather");
+ uint32_t start_time = HAL_GetTick();
+ while (HAL_GetTick() - start_time < 5000) { // Chạy lùi 5 giây
+ step = (step - 1 + 8) % 8;
+ stepper_half_drive(step);
+ stepper_set_rpm(20);
+ }
+ state = 0; // Đánh dấu đã mở cửa
+ }
+// Tự động đóng cửa khi trời mưa (adc < 3000)
+if (adcValue < 3000 && state == 0) { // Trời mưa & cửa mở
+lcd_goto_XY(2, 0);
+lcd_send_string(" ");
+lcd_goto_XY(2, 0);
+lcd_send_string("Heavy Rain");
+ uint32_t start_time = HAL_GetTick();
+ while (HAL_GetTick() - start_time < 5000) { // Chạy tới 5 giây
