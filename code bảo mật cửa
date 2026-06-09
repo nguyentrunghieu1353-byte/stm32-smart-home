@@ -1,0 +1,161 @@
+/* Includes -----------------------------------------------------------------
+#include "main.h"
+/* USER CODE BEGIN Includes */
+#include "lcd.h"
+#include "stdlib.h"
+#include "stdio.h"
+#include "string.h"
+#include "stdbool.h"
+#include "keypad.h"
+/* USER CODE END Includes */
+/* USER CODE BEGIN PD */
+#define PASSWORD_LENGTH 4 // Định nghĩa độ dài mật khẩu
+/* USER CODE END PD */
+TIM_HandleTypeDef htim2;
+/* USER CODE BEGIN PV */
+char password[PASSWORD_LENGTH + 1] = "1234"; // Mật khẩu mặc định
+char input[PASSWORD_LENGTH + 1] = "";
+uint8_t input_index = 0;
+bool change_mode = false; // chế độ "nhập mật khẩu cũ" để chuẩn bị đổi mật
+khẩu.
+bool new_pass_mode = false;//"nhập mật khẩu mới" sau khi đã nhập đúng mật
+khẩu cũ.
+unsigned char flag = 0;
+/* USER CODE END PV */
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_TIM2_Init(void);
+/* USER CODE BEGIN 0 */
+void buzzer_tut_tut() {
+ for (int i = 0; i < 2; i++) { // Tút 2 lần
+ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET); // Bật còi
+ HAL_Delay(100); // kêu 100ms
+ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET); // Tắt còi
+ HAL_Delay(100); // nghỉ 100ms
+ }
+}
+void set_servo_angle(uint8_t angle) {
+ if (angle > 180) angle = 180; // Giới hạn góc
+ uint16_t pulse = 500 + (angle * 2000 / 180); // Tính độ rộng xung PWM
+ __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse);
+}
+void lock_door() {
+ set_servo_angle(0); // Quay servo về góc 0° khi khóa cửa
+ LCD_clear();
+ LCD_setCursor(0, 0);
+ LCD_printf("LOCKED");
+}
+void unlock_door() {
+  buzzer_tut_tut(); // gọi hàm kêu còi
+ HAL_Delay(200);
+ set_servo_angle(90); // Quay servo 130 độ
+ LCD_clear();
+ LCD_setCursor(0, 0);
+ LCD_printf("UNLOCKED");
+ HAL_Delay(1000); // Đợi 3 giây
+ set_servo_angle(0); // Quay về vị trí ban đầu
+ lock_door(); // Đóng khóa lại sau 3 giây
+}
+void check_password() {
+ if (change_mode) {
+ // Bước 1: kiểm tra mật khẩu cũ
+ if (strcmp(input, password) == 0) {
+ LCD_clear();
+ LCD_printf("Enter New Pass:");
+ memset(input, 0, sizeof(input));
+ input_index = 0;
+ change_mode = false;
+ new_pass_mode = true; // Bật chế độ nhập mật khẩu mới
+ } else {
+ LCD_clear();
+ LCD_printf("Wrong Old Pass");
+ HAL_Delay(1000);
+ LCD_clear();
+ LCD_printf("Enter Pass:");
+ change_mode = false; // Thoát đổi mật khẩu nếu sai
+ }
+ }
+ else if (new_pass_mode) {
+ // Bước 2: lưu mật khẩu mới
+ strcpy(password, input);
+ LCD_clear();
+ LCD_printf("Pass Changed");
+ HAL_Delay(1000);
+ new_pass_mode = false;
+ LCD_clear();
+ LCD_printf("Enter Pass:");
+ }
+ else {
+ // Bình thường: kiểm tra mật khẩu
+ if (strcmp(input, password) == 0) {
+ unlock_door();
+ } else {
+ LCD_clear();
+ LCD_printf("Wrong Pass");
+ HAL_Delay(1000);
+ }
+ }
+ // Xóa input sau mỗi lần nhấn #
+ memset(input, 0, sizeof(input));
+ input_index = 0;
+}
+void handle_keypad() {
+ char key = keypad_getkey();
+ if (key) {
+ HAL_Delay(200); // Debounce tránh nhận nhiều lần
+ if (key == '#') { // Xác nhận mật khẩu
+ check_password();
+ }
+ else if (key == '*') { // Xóa nhập
+ memset(input, 0, sizeof(input));
+ input_index = 0;
+ LCD_clear();
+ LCD_setCursor(0, 0);
+ LCD_printf("Enter Pass:");
+ }
+ else if (key == 'A') { // Nếu nhấn phím 'A' trên Keypad -> Chuyển
+sang chế độ đổi mật khẩu
+ LCD_clear();
+ LCD_printf("Enter Old Pass:"); // Yêu cầu nhập mật khẩu cũ
+ change_mode = true; // Bật chế độ đổi mật khẩu
+ }
+ else if (input_index < PASSWORD_LENGTH) {
+ input[input_index++] = key; // Lưu ký tự vào input
+ LCD_setCursor(1, 0);
+ for (uint8_t i = 0; i < input_index; i++) {
+ LCD_printf("*"); // Hiển thị dấu * cho mỗi ký tự nhập
+ }
+ }
+ }
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+if(GPIO_Pin== GPIO_PIN_1){
+ flag = 1;
+}
+}
+/* USER CODE END 0 */
+int main(void)
+{
+ HAL_Init();
+ SystemClock_Config();
+ MX_GPIO_Init();
+ MX_TIM2_Init();
+ /* USER CODE BEGIN 2 */
+ LCD_init();
+ keypad_init();
+ lock_door();
+ /* USER CODE END 2 */
+ /* USER CODE BEGIN WHILE */
+ while (1)
+ {
+ /* USER CODE END WHILE */
+ /* USER CODE BEGIN 3 */
+ HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+ handle_keypad();
+ if(flag==1){
+ unlock_door(); // Mở cửa
+ flag = 0;
+}
+ }
+ /* USER CODE END 3 */
+}
