@@ -1,0 +1,14 @@
+//hàm điều khiển góc độ xoay động cơ
+void set_servo_angle(uint8_t angle) {
+ if (angle > 180) angle = 180; // Giới hạn góc
+ uint16_t pulse = 500 + (angle * 2000 / 180); // Tính độ rộng xung PWM
+ __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse);
+}
+ while (1)
+ {
+ /* USER CODE END WHILE */
+ /* USER CODE BEGIN 3 */
+ HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+ }
+ /* USER CODE END 3 */
+}
