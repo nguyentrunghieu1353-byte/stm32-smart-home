@@ -1,0 +1,19 @@
+void buzzer_tut_tut() {
+ for (int i = 0; i < 2; i++) { // Tút 2 lần
+ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET); // Bật còi
+ HAL_Delay(100); // kêu 100ms
+ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET); // Tắt còi
+ HAL_Delay(100); // nghỉ 100ms
+ }
+}
+void unlock_door() {
+buzzer_tut_tut(); // gọi hàm kêu còi
+ HAL_Delay(200);
+ set_servo_angle(90); // Quay servo 130 độ
+ LCD_clear();
+ LCD_setCursor(0, 0);
+ LCD_printf("UNLOCKED");
+ HAL_Delay(1000); // Đợi 3 giây
+ set_servo_angle(0); // Quay về vị trí ban đầu
+ lock_door(); // Đóng khóa lại sau 3 giây
+}
